@@ -3,6 +3,7 @@
  */
 
 #include "lfapp/lfapp.h"
+#include "lfapp/crypto.h"
 #include "lfapp/dom.h"
 #include "lfapp/css.h"
 #include "lfapp/flow.h"

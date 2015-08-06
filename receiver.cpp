@@ -10,10 +10,8 @@
 #include "lfapp/gui.h"
 #include "crawler/google_chart.h"
 
-using namespace LFL;
-
+namespace LFL { 
 DEFINE_int   (gui_port,            0,              "GUI Port");
-                                                   
 DEFINE_int   (port,                0,              "Run SMTP server on port");
 DEFINE_string(ip,                  "",             "Run SMTP server on comma separated IP list; blank for all");
 DEFINE_string(domain,              "",             "SMTP server/client domain; blank for reverse dns");
@@ -180,8 +178,10 @@ struct StatusGUI : public HTTPServer::Resource {
     }
 };
 
-extern "C" {
-int main(int argc, const char **argv) {
+}; // namespace LFL
+using namespace LFL;
+
+extern "C" int main(int argc, const char **argv) {
     screen->frame_cb = frame;
     app->logfilename = StrCat(LFAppDownloadDir(), "receiver.txt");
     FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
@@ -233,5 +233,4 @@ int main(int argc, const char **argv) {
     int ret = app->Main();
     ERROR("PerformanceTimers: ", Singleton<PerformanceTimers>::Get()->DebugString());
     return ret;
-}
 }

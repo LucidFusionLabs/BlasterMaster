@@ -16,15 +16,15 @@ add_subdirectory(../core/lfapp ${CMAKE_CURRENT_BINARY_DIR}/lfapp_obj)
 add_definitions(${LFAPP_DEF})
 include_directories(${LFAPP_INCLUDE})
 
-add_executable(blaster blaster.cpp ${SDL_MAIN})
+add_executable(blaster blaster.cpp)
 target_link_libraries(blaster ${LFAPP_LIB})
 
-add_executable(resolver resolver.cpp ${SDL_MAIN})
+add_executable(resolver resolver.cpp)
 target_link_libraries(resolver ${LFAPP_LIB})
 
-add_executable(tester tester.cpp ${SDL_MAIN})
+add_executable(tester tester.cpp)
 target_link_libraries(tester ${LFAPP_LIB})
 
-add_executable(receiver receiver.cpp ${SDL_MAIN})
+add_executable(receiver receiver.cpp)
 target_link_libraries(receiver ${LFAPP_LIB})
 
