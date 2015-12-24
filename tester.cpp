@@ -6,7 +6,7 @@
 #include "lfapp/network.h"
 #include "lfapp/resolver.h"
 #include "lfapp/dom.h"
-#include "crawler/html.h"
+#include "web/html.h"
 
 using namespace LFL;
 

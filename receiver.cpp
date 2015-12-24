@@ -8,7 +8,7 @@
 #include "lfapp/css.h"
 #include "lfapp/flow.h"
 #include "lfapp/gui.h"
-#include "crawler/google_chart.h"
+#include "web/google_chart.h"
 
 namespace LFL { 
 DEFINE_int   (gui_port,            0,              "GUI Port");
