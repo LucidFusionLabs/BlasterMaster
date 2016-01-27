@@ -19,13 +19,6 @@ DECLARE_int  (target_fps);         //             Target_resolve_per_second = ta
 DEFINE_int   (frame_resolve_max,   10,            "max resolve per frame");
 
 struct BulkResolver {
-  File *out; RecursiveResolver *rr; int min_rr_completed;
-  BulkResolver() : out(0), rr(0), min_rr_completed(0) {}
-  void OpenLog(const string &fn) {
-    if (LocalFile(fn, "r").Opened()) FATAL(fn, " already exists");
-    out = new LocalFile(fn, "w");
-  }
-
   struct Query {
     bool Adone;
     string domain;
@@ -38,8 +31,9 @@ struct BulkResolver {
         (domain, Adone ? DNS::Type::MX : DNS::Type::A, 
          Resolver::ResponseCB(bind(&BulkResolver::Query::ResponseCB, this, _1, _2)));
       INFO("BulkResolver Run domain=", domain, ", type=", req->type);
-      parent->rr->Resolve(req);
+      parent->rr->StartResolveRequest(req);
     }
+
     void Output() {
       set<IPV4::Addr> Aa;
       for (int i = 0; i < A.A.size(); i++) Aa.insert(A.A[i].addr);
@@ -54,7 +48,7 @@ struct BulkResolver {
         if (a.question.empty() || a.answer.empty() || e_iter == MXe.end()) { ERROR("missing ", a.answer); continue; }
         MXa[a.pref] = pair<string, string>(e_iter->first, IPV4::MakeCSV(e_iter->second));
       }
-      for (map<int, pair<string, string> >::iterator i = MXa.begin(); i != MXa.end(); ++i) {
+      for (auto i = MXa.begin(); i != MXa.end(); ++i) {
         string hn = i->second.first;
         if (SuffixMatch(hn, ".")) hn.erase(hn.size()-1);
         StrAppend(&ret, "; MX", i->first, "=", hn, ":", i->second.second);
@@ -62,6 +56,7 @@ struct BulkResolver {
       ret += "\n";
       if (parent->out) parent->out->Write(ret);
     }
+
     void ResponseCB(IPV4::Addr addr, DNS::Response *res) {
       bool resolved = (addr != -1 && res);
       if (!resolved) ERROR("failed to resolve: ", domain, " type=", Adone ? "MX" : "A");
@@ -71,12 +66,22 @@ struct BulkResolver {
       else { Adone=1; Run(); }
     }
   };
+
   vector<Query*> queue, done;
+  File *out=0;
+  RecursiveResolver *rr=0;
+  int min_rr_completed=0;
+
+  void OpenLog(const string &fn) {
+    if (LocalFile(fn, "r").Opened()) FATAL(fn, " already exists");
+    out = new LocalFile(fn, "w");
+  }
 
   void AddQueriesFromFile(const string &fn) {
     int start_size = queue.size();
     LocalFile file(fn, "r");
-    for (const char *line = file.NextLine(); line; line = file.NextLine()) {
+    NextRecordReader nr(&file);
+    for (const char *line = nr.NextLine(); line; line = nr.NextLine()) {
       queue.push_back(new Query(tolower(line), this)); 
     }
     INFO("Added ", queue.size() - start_size, " from ", fn); 
@@ -138,9 +143,9 @@ extern "C" int main(int argc, const char **argv) {
   if (!FLAGS_resolve.empty()) {
     Singleton<UDPClient>::Get()->connect_src_pool = new IPV4EndpointPool(FLAGS_ip_address);
     RecursiveResolver *RR = Singleton<RecursiveResolver>::Get();
-    RR->Resolve(new RecursiveResolver::Request("com"));
-    RR->Resolve(new RecursiveResolver::Request("net"));
-    RR->Resolve(new RecursiveResolver::Request("org"));
+    RR->StartResolveRequest(new RecursiveResolver::Request("com"));
+    RR->StartResolveRequest(new RecursiveResolver::Request("net"));
+    RR->StartResolveRequest(new RecursiveResolver::Request("org"));
     bulk_resolver.min_rr_completed = 3;
     bulk_resolver.rr = Singleton<RecursiveResolver>::Get();
     bulk_resolver.OpenLog("resolve.out.txt");

@@ -38,14 +38,16 @@ struct ReceiverConfig {
   ReceiverConfig() { outputs["/dev/null"] = 0; }
 
   void OpenDomains(File *f) {
-    for (const char *line = f->NextLine(); line; line = f->NextLine()) domains.push_back(tolower(line));
+    NextRecordReader nr(f);
+    for (const char *line = nr.NextLine(); line; line = nr.NextLine()) domains.push_back(tolower(line));
   }
 
   void OpenFilters(File *f) {
-    for (const char *line = f->NextLine(); line; line = f->NextLine()) {
+    NextRecordReader nr(f);
+    for (const char *line = nr.NextLine(); line; line = nr.NextLine()) {
       MailFilter filter;
 
-      StringWordIter words(StringPiece(line, f->nr.record_len), isspace, isint<'/'>);
+      StringWordIter words(StringPiece(line, nr.record_len), isspace, isint<'/'>);
       string word = IterNextString(&words);
       if (words.Done() || !word[0] || word[0] == '#') continue;
 

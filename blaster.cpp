@@ -390,8 +390,9 @@ struct BulkMailer {
 
   int OpenEmailList(File *f) {
     if (!f->Opened()) return 0;
+    NextRecordReader nr(f);
     long long queue_attempted_start = queue_attempted;
-    for (const char *line = f->NextLine(); line; line = f->NextLine()) {
+    for (const char *line = nr.NextLine(); line; line = nr.NextLine()) {
       vector<string> email;
       Split(line, isint3<'@', ' ', '\t'>, &email);
       CHECK_EQ(email.size(), 2);
@@ -411,9 +412,10 @@ struct BulkMailer {
     map<MXAddrs, MX*> MXs;
 
     // For each line of resolve.out.txt
-    for (const char *line = f->NextLine(); line; line = f->NextLine()) {
+    NextRecordReader nr(f);
+    for (const char *line = nr.NextLine(); line; line = nr.NextLine()) {
       vector<ResolvedMX> resolvedA, resolvedMX, *targetMXlist = &resolvedMX;
-      ParseResolverOutput(line, f->nr.record_len, &resolvedA, &resolvedMX);
+      ParseResolverOutput(line, nr.record_len, &resolvedA, &resolvedMX);
       if (!resolvedA.size()) { ERROR("failed: ", line); continue; }
       if (!resolvedMX.size()) targetMXlist = &resolvedA;
 
