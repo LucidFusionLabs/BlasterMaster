@@ -88,7 +88,7 @@ struct BulkResolver {
   }
 
   void Frame() {
-    Service *udp_client = Singleton<UDPClient>::Get();
+    Service *udp_client = app->net->udp_client.get();
     if (!queue.size() || rr->queries_completed < min_rr_completed) return;
     for (int i = 0; i < FLAGS_frame_resolve_max && queue.size() && udp_client->connect_src_pool->Available(); i++) {
       Query *q = queue.back();
@@ -112,7 +112,7 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
   if (!FLAGS_resolve.empty()) bulk_resolver.Frame();
 
   char buf[256];
-  if (FGets(buf, sizeof(buf))) ERROR("FPS=", FPS(), bulk_resolver.StatsLine());
+  if (FGets(buf, sizeof(buf))) ERROR("FPS=", app->FPS(), bulk_resolver.StatsLine());
   return 0;
 }
 
@@ -125,13 +125,13 @@ extern "C" int main(int argc, const char **argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_lfapp_network = 1;
 
-  if (app->Create(argc, argv, __FILE__)) { ERROR("lfapp init failed: ", strerror(errno)); return app->Free(); }
-  if (app->Init())                       { ERROR("lfapp open failed: ", strerror(errno)); return app->Free(); }
+  if (app->Create(argc, argv, __FILE__)) return -1;
+  if (app->Init())                       return -1;
 
   HTTPServer httpd(FLAGS_gui_port, false);
   if (FLAGS_gui_port) {
     httpd.AddURL("/", new StatusGUI());
-    if (app->network->Enable(&httpd)) return -1;
+    if (app->net->Enable(&httpd)) return -1;
   }
 
   if (FLAGS_ip_address.empty()) {
@@ -141,13 +141,13 @@ extern "C" int main(int argc, const char **argv) {
   }
 
   if (!FLAGS_resolve.empty()) {
-    Singleton<UDPClient>::Get()->connect_src_pool = new IPV4EndpointPool(FLAGS_ip_address);
-    RecursiveResolver *RR = Singleton<RecursiveResolver>::Get();
+    app->net->udp_client->connect_src_pool = new IPV4EndpointPool(FLAGS_ip_address);
+    RecursiveResolver *RR = app->net->recursive_resolver.get();
     RR->StartResolveRequest(new RecursiveResolver::Request("com"));
     RR->StartResolveRequest(new RecursiveResolver::Request("net"));
     RR->StartResolveRequest(new RecursiveResolver::Request("org"));
+    bulk_resolver.rr = RR;
     bulk_resolver.min_rr_completed = 3;
-    bulk_resolver.rr = Singleton<RecursiveResolver>::Get();
     bulk_resolver.OpenLog("resolve.out.txt");
     bulk_resolver.AddQueriesFromFile(FLAGS_resolve);
   }

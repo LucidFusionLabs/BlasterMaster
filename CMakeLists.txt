@@ -1,30 +1,21 @@
-# $Id: CMakeLists.txt 1320 2014-10-26 08:12:52Z justin $
-
-set(LFL_EASTL 1)
-set(LFL_HEADLESS 1)
-set(LFL_OPENSSL 1)
-set(LFL_EPOLL 1)
-
-if(LFL_ANDROID)
-elseif(LFL_IPHONE)
-else(LFL_ANDROID)
- set(LFL_GLOG 1)
-endif(LFL_ANDROID)
+set(BLASTER_LIB ${LFL_APP_LIB} app_null_os app_null_framework app_null_graphics
+    app_null_audio app_null_camera app_null_matrix app_null_fft
+    app_simple_resampler app_simple_loader ${LFL_APP_CONVERT}
+    app_null_png app_null_jpeg app_null_gif app_null_css app_null_ttf
+    app_null_ssl app_null_js app_null_tu)
 
 lfl_project(blaster)
-add_subdirectory(../core/lfapp ${CMAKE_CURRENT_BINARY_DIR}/lfapp_obj)
-add_definitions(${LFAPP_DEF})
-include_directories(${LFAPP_INCLUDE})
+lfl_add_target(blaster blaster.cpp)
+target_link_libraries(blaster ${BLASTER_LIB})
 
-add_executable(blaster blaster.cpp)
-target_link_libraries(blaster ${LFAPP_LIB})
+lfl_project(receiver)
+lfl_add_target(receiver receiver.cpp)
+target_link_libraries(receiver ${BLASTER_LIB})
 
-add_executable(resolver resolver.cpp)
-target_link_libraries(resolver ${LFAPP_LIB})
+lfl_project(resolver)
+lfl_add_target(resolver resolver.cpp)
+target_link_libraries(resolver ${BLASTER_LIB})
 
-add_executable(tester tester.cpp)
-target_link_libraries(tester ${LFAPP_LIB})
-
-add_executable(receiver receiver.cpp)
-target_link_libraries(receiver ${LFAPP_LIB})
-
+lfl_project(tester)
+lfl_add_target(tester tester.cpp)
+target_link_libraries(tester ${BLASTER_LIB})

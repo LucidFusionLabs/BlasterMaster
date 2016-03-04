@@ -19,14 +19,14 @@ static void ParseResolverOutput(const char *line, int linelen, vector<ResolvedMX
   StringWordIter hosts(line, linelen);
   for (string h = hosts.Next(); !hosts.Done(); h = hosts.Next(), host_i++) {
     StringWordIter args(h, isint4<'=', ':', ',', ';'>);
-    string type = IterNextString(&args);
-    string host = IterNextString(&args);
+    string type = args.NextString();
+    string host = args.NextString();
     if (!host_i) {
       CHECK_EQ(type, "A");
-      A->push_back(ResolvedMX(0, host, IterNextString(&args)));
+      A->push_back(ResolvedMX(0, host, args.NextString()));
     } else {
       CHECK(PrefixMatch(type, "MX"));
-      mx->push_back(ResolvedMX(atoi(type.c_str()+2), host, IterNextString(&args)));
+      mx->push_back(ResolvedMX(atoi(type.c_str()+2), host, args.NextString()));
     }
   }
 }

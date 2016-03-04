@@ -2,14 +2,15 @@
  * $Id: blaster.cpp 1336 2014-12-08 09:29:59Z justin $
  */
 
-#include "lfapp/lfapp.h"
-#include "lfapp/crypto.h"
-#include "lfapp/dom.h"
-#include "lfapp/css.h"
-#include "lfapp/flow.h"
-#include "lfapp/gui.h"
-#include "web/html.h"
-#include "web/google_chart.h"
+#include "core/app/app.h"
+#include "core/app/crypto.h"
+#include "core/web/dom.h"
+#include "core/web/css.h"
+#include "core/app/flow.h"
+#include "core/app/gui.h"
+#include "core/app/net/smtp.h"
+#include "core/web/html.h"
+#include "core/web/google_chart.h"
 #include "resolver.h"
 
 namespace LFL {
@@ -63,8 +64,8 @@ struct BlasterConfig : public HTMLParser {
       StringLineIter lines(i->second);
       for (const char *line = lines.Next(); line; line = lines.Next()) {
         StringWordIter words(StringPiece(line, lines.cur_len));
-        string k = toconvert(tolower(IterNextString(&words)), tochar<'-','_'>);
-        string v = IterNextString(&words);
+        string k = toconvert(tolower(words.NextString()), tochar<'-','_'>);
+        string v = words.NextString();
         if (SuffixMatch(k, ":")) k.erase(k.size()-1);
         if (k == "ip_address") StrAppend(&ip_addresses, ip_addresses.size()?",":"", v);
         else if (!fm->Set(k, v)) FATAL("Unknown var '", k, "', Did you mean -", fm->Match(k, __FILE__), "?");
@@ -122,7 +123,7 @@ struct BulkMailTemplate {
     if (text.empty()) return false;
     string current_textblock;
     StringLineIter lines(text, StringLineIter::Flag::BlankLines);
-    for (string line = IterNextString(&lines); !lines.Done(); line = IterNextString(&lines)) {
+    for (string line = lines.NextString(); !lines.Done(); line = lines.NextString()) {
       if (line.empty()) current_textblock += "\r\n";
       for (const char *li = line.c_str(); *li; /**/) {
         const char *template_var_begin = strchr(li, '['), *template_var_end = 0;
@@ -500,7 +501,7 @@ struct BulkMailer {
     bounce_log   = new LocalFile(StrCat(logfile, "bounce.log"),   "a"); if (!bounce_log  ->Opened()) FATAL("open ", bounce_log  ->Filename());
     retry_log    = new LocalFile(StrCat(logfile, "retry.log"),    "a"); if (!retry_log   ->Opened()) FATAL("open ", retry_log   ->Filename());
 
-    smtp_client = Singleton<SMTPClient>::Get();
+    smtp_client = app->net->smtp_client.get();
     started = Now();
     return prepared;
   }
@@ -581,7 +582,7 @@ struct BulkMailer {
     for (set<Target*>::const_iterator i = outstanding.begin(); i != outstanding.end(); ++i) outstanding_emails += (*i)->email.size();
     string ret = StrCat("queued=", queued, ", finished=", completed, ", sent=", sent, ", delivered=", delivered);
     StrAppend(&ret, ", rejected=", rejected, ", aborted=", aborted, ", outstanding=", outstanding_emails);
-    StrAppend(&ret, ", mtas=", outstanding.size(), ", connections=", Singleton<SMTPClient>::Get()->conn.size());
+    StrAppend(&ret, ", mtas=", outstanding.size(), ", connections=", app->net->smtp_client->conn.size());
     return ret;
   }
 
@@ -597,8 +598,8 @@ struct StatusGUI : public HTTPServer::Resource {
 
     StrAppend(&response, GChartsHTML::JSFooter(), "</head><body><h>Blaster Version 1.0 Up ", intervaltime(Now() - bulk_mailer.started), "  </h>\n");
     StrAppend(&response, "<p>", bulk_mailer.StatusLine(), "</p>\n");
-    StrAppend(&response, "<p>target conn/sec=", FLAGS_target_fps * FLAGS_frame_connect_max, ", conn/sec=", FPS() * bulk_mailer.connects_per_frame.Avg(), "</p>\n");
-    StrAppend(&response, "<p>target_fps=", FLAGS_target_fps, ", FPS=", FPS(), "</p>\n");
+    StrAppend(&response, "<p>target conn/sec=", FLAGS_target_fps * FLAGS_frame_connect_max, ", conn/sec=", app->FPS() * bulk_mailer.connects_per_frame.Avg(), "</p>\n");
+    StrAppend(&response, "<p>target_fps=", FLAGS_target_fps, ", FPS=", app->FPS(), "</p>\n");
     StrAppend(&response, "<p>frame_connect_max=", FLAGS_frame_connect_max, ", connects_per_frame=", bulk_mailer.connects_per_frame.Avg(), "</p>\n");
 
     StrAppend(&response, GChartsHTML::DivElement("viz1", 600, 400), "\n");
@@ -614,21 +615,23 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
   bulk_mailer.Frame();
 
   char buf[256];
-  if (FGets(buf, sizeof(buf))) ERROR("FPS=", FPS(), ", ", bulk_mailer.StatusLine());
+  if (FGets(buf, sizeof(buf))) ERROR("FPS=", app->FPS(), ", ", bulk_mailer.StatusLine());
   return 0;
 }
 
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" int main(int argc, const char **argv) {
-  screen->frame_cb = Frame;
-  app->logfilename = StrCat(LFAppDownloadDir(), "blaster.txt");
+extern "C" void MyAppInit() {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_lfapp_network = 1;
+  app->logfilename = StrCat(LFAppDownloadDir(), "blaster.txt");
+  screen->frame_cb = Frame;
+}
 
-  if (app->Create(argc, argv, __FILE__)) { ERROR("lfapp init failed: ", strerror(errno)); return app->Free(); }
-  if (app->Init())                       { ERROR("lfapp open failed: ", strerror(errno)); return app->Free(); }
+extern "C" int MyAppMain(int argc, const char* const* argv) {
+  if (app->Create(argc, argv, __FILE__)) return -1;
+  if (app->Init())                       return -1;
 
   if (!FLAGS_encode_uid.empty()) { INFO("Encode('", FLAGS_encode_uid, "') = '", BulkMailEncoding::EncodeUserID(FLAGS_encode_uid), "'"); return 0; }
   if (!FLAGS_decode_uid.empty()) { INFO("Decode('", FLAGS_decode_uid, "') = '", BulkMailEncoding::DecodeUserID(FLAGS_decode_uid), "'"); return 0; }
@@ -644,7 +647,7 @@ extern "C" int main(int argc, const char **argv) {
   if (FLAGS_gui_port) {
     httpd.AddURL("/",    new StatusGUI());
     httpd.AddURL("/cmd", new HTTPServer::ConsoleResource);
-    if (app->network->Enable(&httpd)) return -1;
+    if (app->net->Enable(&httpd)) return -1;
   }
 
   CHECK(!FLAGS_domain.empty());
@@ -663,7 +666,7 @@ extern "C" int main(int argc, const char **argv) {
   INFO("BulkMailer queued ", bulk_mailer.queued, ", failed to queue ", failed_to_queue);
   if (bulk_mailer.Prepare() <= 0 && !FLAGS_gui_port) { INFO("nothing to do"); return 0; }
 
-  SMTPClient *smtp = Singleton<SMTPClient>::Get();
+  SMTPClient *smtp = app->net->smtp_client.get();
   smtp->connect_src_pool = new IPV4EndpointPool(FLAGS_ip_address);
   if (FLAGS_init_connections) init_connections_reached = false;
   if (!FLAGS_ehlo_domain) smtp->domain = FLAGS_domain;
@@ -675,7 +678,7 @@ extern "C" int main(int argc, const char **argv) {
     smtp->domains[IPV4::Parse("0.0.0.0")  ] = "localhost";
     smtp->domains[IPV4::Parse("127.0.0.1")] = "localhost";
   }
-  if (app->network->Enable(smtp)) return -1;
+  if (app->net->Enable(smtp)) return -1;
 
   int ret = app->Main();
   ERROR("PerformanceTimers: ", Singleton<PerformanceTimers>::Get()->DebugString());

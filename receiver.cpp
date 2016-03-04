@@ -48,25 +48,25 @@ struct ReceiverConfig {
       MailFilter filter;
 
       StringWordIter words(StringPiece(line, nr.record_len), isspace, isint<'/'>);
-      string word = IterNextString(&words);
+      string word = words.NextString();
       if (words.Done() || !word[0] || word[0] == '#') continue;
 
       if      (StringEquals(word, "Catch-all")) { filter.type=MailFilter::DEFAULT; }
       else if (StringEquals(word, "mail-from")) { filter.type=MailFilter::MAIL_FROM; }
       else if (StringEquals(word, "rcpt-to"))   { filter.type=MailFilter::RCPT_TO; }
-      else if (StringEquals(word, "header"))    { filter.type=MailFilter::HEADER; filter.header=IterNextString(&words); }
+      else if (StringEquals(word, "header"))    { filter.type=MailFilter::HEADER; filter.header=words.NextString(); }
       else if (StringEquals(word, "content"))   { filter.type=MailFilter::CONTENT; }
       else FATAL("Parse failed '", line, "'");
 
       if (filter.type != MailFilter::DEFAULT) {
-        string regex = IterNextString(&words);
+        string regex = words.NextString();
         CHECK(!regex.empty());
         CHECK_EQ(regex[0],              '/');
         CHECK_EQ(regex[regex.size()-1], '/');
         filter.regex = Regex((filter.regex_pattern = regex.substr(1, regex.size()-2)));
       }
 
-      string filename = IterNextString(&words);
+      string filename = words.NextString();
       CHECK(!filename.empty());
 
       map<string, File*>::const_iterator out_i = outputs.find(filename);
@@ -170,7 +170,7 @@ struct StatusGUI : public HTTPServer::Resource {
     if (table.size()>1) StrAppend(&response, GChartsHTML::JSAreaChart("viz1", 600, 400, "Last Hour", "Mails", "Minutes", table));
 
     StrAppend(&response, GChartsHTML::JSFooter(), "</head><body><h>Receiver Version 1.0</h>\n");
-    StrAppend(&response, "<p>FPS=", FPS(), ", ", smtp_server.StatusLine(), "</p>\n");
+    StrAppend(&response, "<p>FPS=", app->FPS(), ", ", smtp_server.StatusLine(), "</p>\n");
     StrAppend(&response, GChartsHTML::DivElement("viz1", 600, 400), "\n");
     StrAppend(&response, "</body></html>\n");
     return HTTPServer::Response("text/html; charset=UTF-8", &response);
@@ -180,7 +180,7 @@ struct StatusGUI : public HTTPServer::Resource {
 int Frame(LFL::Window *W, unsigned clicks, int flag) {
   smtp_server.stat_log->Update();
   char buf[256];
-  if (FGets(buf, sizeof(buf))) ERROR("FPS=", FPS(), ", ", smtp_server.StatusLine());
+  if (FGets(buf, sizeof(buf))) ERROR("FPS=", app->FPS(), ", ", smtp_server.StatusLine());
   return 0;
 }
 
@@ -193,8 +193,8 @@ extern "C" int main(int argc, const char **argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_lfapp_network = 1;
 
-  if (app->Create(argc, argv, __FILE__)) { ERROR("lfapp init failed: ", strerror(errno)); return app->Free(); }
-  if (app->Init())                       { ERROR("lfapp open failed: ", strerror(errno)); return app->Free(); }
+  if (app->Create(argc, argv, __FILE__)) return -1;
+  if (app->Init())                       return -1;
 
   if (!FLAGS_configuration_file.empty()) {
     LocalFile lf(FLAGS_configuration_file, "r");
@@ -209,7 +209,7 @@ extern "C" int main(int argc, const char **argv) {
   HTTPServer httpd(FLAGS_gui_port, false);
   if (FLAGS_gui_port) {
     httpd.AddURL("/", new StatusGUI());
-    if (app->network->Enable(&httpd)) return -1;
+    if (app->net->Enable(&httpd)) return -1;
   }
 
   if (FLAGS_port) {
@@ -221,7 +221,7 @@ extern "C" int main(int argc, const char **argv) {
     } else {
       smtp_server.QueueListen(IPV4::ANY, FLAGS_port);
     }
-    if (app->network->Enable(&smtp_server)) return -1;
+    if (app->net->Enable(&smtp_server)) return -1;
 
     smtp_server.Open(FLAGS_domain);
     if (smtp_server.domain.empty()) {

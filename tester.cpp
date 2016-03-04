@@ -67,7 +67,7 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
   }
 
   char buf[256];
-  if (FGets(buf, sizeof(buf))) ERROR("FPS=", FPS(), smtp_tester.StatsLine());
+  if (FGets(buf, sizeof(buf))) ERROR("FPS=", app->FPS(), smtp_tester.StatsLine());
   return 0;
 }
 
@@ -80,18 +80,18 @@ extern "C" int main(int argc, const char **argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_lfapp_network = 1;
 
-  if (app->Create(argc, argv, __FILE__)) { ERROR("lfapp init failed: ", strerror(errno)); return app->Free(); }
-  if (app->Init())                       { ERROR("lfapp open failed: ", strerror(errno)); return app->Free(); }
+  if (app->Create(argc, argv, __FILE__)) return -1;
+  if (app->Init())                       return -1;
 
   HTTPServer httpd(FLAGS_gui_port, false);
   if (FLAGS_gui_port) {
     httpd.AddURL("/", new StatusGUI());
-    if (app->network->Enable(&httpd)) return -1;
+    if (app->net->Enable(&httpd)) return -1;
   }
 
-  if (!FLAGS_wget.empty()) Singleton<HTTPClient>::Get()->WGet(FLAGS_wget);
-  if (!FLAGS_nslookup .empty()) { FLAGS_dns_dump=1; Singleton<Resolver>         ::Get()->QueueResolveRequest(             Resolver::Request(FLAGS_nslookup,  FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
-  if (!FLAGS_rnslookup.empty()) { FLAGS_dns_dump=1; Singleton<RecursiveResolver>::Get()->StartResolveRequest(new RecursiveResolver::Request(FLAGS_rnslookup, FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
+  if (!FLAGS_wget.empty()) app->net->http_client->WGet(FLAGS_wget);
+  if (!FLAGS_nslookup .empty()) { FLAGS_dns_dump=1; app->net->system_resolver   ->QueueResolveRequest(             Resolver::Request(FLAGS_nslookup,  FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
+  if (!FLAGS_rnslookup.empty()) { FLAGS_dns_dump=1; app->net->recursive_resolver->StartResolveRequest(new RecursiveResolver::Request(FLAGS_rnslookup, FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
   if (FLAGS_print_iface_ips) {
     set<IPV4::Addr> ips; string text;
     Sniffer::GetDeviceAddressSet(&ips);
@@ -114,7 +114,7 @@ extern "C" int main(int argc, const char **argv) {
       }
     }
     smtp_tester.Start();
-    if (app->network->Enable(smtp_tester.svc)) return -1;
+    if (app->net->Enable(smtp_tester.svc)) return -1;
   }
 
   int ret = app->Main();
