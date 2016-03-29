@@ -2,13 +2,10 @@
  * $Id: receiver.cpp 1336 2014-12-08 09:29:59Z justin $
  */
 
-#include "lfapp/lfapp.h"
-#include "lfapp/network.h"
-#include "lfapp/dom.h"
-#include "lfapp/css.h"
-#include "lfapp/flow.h"
-#include "lfapp/gui.h"
-#include "web/google_chart.h"
+#include "core/app/network.h"
+#include "core/app/net/smtp.h"
+#include "core/app/gui.h"
+#include "core/web/google_chart.h"
 
 namespace LFL { 
 DEFINE_int   (gui_port,            0,              "GUI Port");
@@ -137,7 +134,7 @@ struct MySMTPServer : public SMTPServer {
   }
 
   virtual void ReceiveMail(Connection *c, const SMTP::Message &mail) {
-    if (FLAGS_lfapp_debug) DEBUG("ReceiveMail FROM=", mail.mail_from, ", TO=", mail.rcpt_to, ", content=", mail.content);
+    DEBUG("ReceiveMail FROM=", mail.mail_from, ", TO=", mail.rcpt_to, ", content=", mail.content);
     MailFilter *out = receiver_config.Filter(mail);
     File *outfile = out ? out->out : 0;
     if (outfile) {
@@ -187,12 +184,15 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" int main(int argc, const char **argv) {
-  screen->frame_cb = Frame;
-  app->logfilename = StrCat(LFAppDownloadDir(), "receiver.txt");
+extern "C" void MyAppCreate() {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_lfapp_network = 1;
+  app = new Application();
+  screen = new Window();
+  screen->frame_cb = Frame;
+}
 
+extern "C" int MyAppMain(int argc, const char* const* argv) {
   if (app->Create(argc, argv, __FILE__)) return -1;
   if (app->Init())                       return -1;
 

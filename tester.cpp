@@ -2,14 +2,11 @@
  * $Id: tester.cpp 1325 2014-10-29 06:08:31Z justin $
  */
 
-#include "lfapp/lfapp.h"
-#include "lfapp/network.h"
-#include "lfapp/resolver.h"
-#include "lfapp/dom.h"
-#include "lfapp/css.h"
-#include "lfapp/flow.h"
-#include "lfapp/gui.h"
-#include "web/html.h"
+#include "core/app/network.h"
+#include "core/app/net/resolver.h"
+#include "core/app/net/smtp.h"
+#include "core/app/gui.h"
+#include "core/web/browser.h"
 
 namespace LFL {
 DEFINE_int   (gui_port,            0,             "GUI Port");
@@ -74,12 +71,15 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" int main(int argc, const char **argv) {
-  screen->frame_cb = Frame;
-  app->logfilename = StrCat(LFAppDownloadDir(), "tester.txt");
+extern "C" void MyAppCreate() {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_lfapp_network = 1;
+  app = new Application();
+  screen = new Window();
+  screen->frame_cb = Frame;
+}
 
+extern "C" int MyAppMain(int argc, const char* const* argv) {
   if (app->Create(argc, argv, __FILE__)) return -1;
   if (app->Init())                       return -1;
 
@@ -89,7 +89,7 @@ extern "C" int main(int argc, const char **argv) {
     if (app->net->Enable(&httpd)) return -1;
   }
 
-  if (!FLAGS_wget.empty()) app->net->http_client->WGet(FLAGS_wget);
+  if (!FLAGS_wget.empty()) HTTPClient::WGet(FLAGS_wget);
   if (!FLAGS_nslookup .empty()) { FLAGS_dns_dump=1; app->net->system_resolver   ->QueueResolveRequest(             Resolver::Request(FLAGS_nslookup,  FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
   if (!FLAGS_rnslookup.empty()) { FLAGS_dns_dump=1; app->net->recursive_resolver->StartResolveRequest(new RecursiveResolver::Request(FLAGS_rnslookup, FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
   if (FLAGS_print_iface_ips) {

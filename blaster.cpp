@@ -501,7 +501,7 @@ struct BulkMailer {
     bounce_log   = new LocalFile(StrCat(logfile, "bounce.log"),   "a"); if (!bounce_log  ->Opened()) FATAL("open ", bounce_log  ->Filename());
     retry_log    = new LocalFile(StrCat(logfile, "retry.log"),    "a"); if (!retry_log   ->Opened()) FATAL("open ", retry_log   ->Filename());
 
-    smtp_client = app->net->smtp_client.get();
+    smtp_client = make_unique<SMTPClient>().release();
     started = Now();
     return prepared;
   }
@@ -582,7 +582,7 @@ struct BulkMailer {
     for (set<Target*>::const_iterator i = outstanding.begin(); i != outstanding.end(); ++i) outstanding_emails += (*i)->email.size();
     string ret = StrCat("queued=", queued, ", finished=", completed, ", sent=", sent, ", delivered=", delivered);
     StrAppend(&ret, ", rejected=", rejected, ", aborted=", aborted, ", outstanding=", outstanding_emails);
-    StrAppend(&ret, ", mtas=", outstanding.size(), ", connections=", app->net->smtp_client->conn.size());
+    StrAppend(&ret, ", mtas=", outstanding.size(), ", connections=", smtp_client->conn.size());
     return ret;
   }
 
@@ -622,10 +622,11 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" void MyAppInit() {
+extern "C" void MyAppCreate() {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_lfapp_network = 1;
-  app->logfilename = StrCat(LFAppDownloadDir(), "blaster.txt");
+  app = new Application();
+  screen = new Window();
   screen->frame_cb = Frame;
 }
 
@@ -666,7 +667,7 @@ extern "C" int MyAppMain(int argc, const char* const* argv) {
   INFO("BulkMailer queued ", bulk_mailer.queued, ", failed to queue ", failed_to_queue);
   if (bulk_mailer.Prepare() <= 0 && !FLAGS_gui_port) { INFO("nothing to do"); return 0; }
 
-  SMTPClient *smtp = app->net->smtp_client.get();
+  SMTPClient *smtp = 0; // smtp_client.get();
   smtp->connect_src_pool = new IPV4EndpointPool(FLAGS_ip_address);
   if (FLAGS_init_connections) init_connections_reached = false;
   if (!FLAGS_ehlo_domain) smtp->domain = FLAGS_domain;
