@@ -90,8 +90,8 @@ extern "C" int MyAppMain(int argc, const char* const* argv) {
   }
 
   if (!FLAGS_wget.empty()) HTTPClient::WGet(FLAGS_wget);
-  if (!FLAGS_nslookup .empty()) { FLAGS_dns_dump=1; app->net->system_resolver   ->QueueResolveRequest(             Resolver::Request(FLAGS_nslookup,  FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
-  if (!FLAGS_rnslookup.empty()) { FLAGS_dns_dump=1; app->net->recursive_resolver->StartResolveRequest(new RecursiveResolver::Request(FLAGS_rnslookup, FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
+  if (!FLAGS_nslookup .empty()) { FLAGS_dns_dump=1; app->net->system_resolver         ->QueueResolveRequest(             Resolver::Request(FLAGS_nslookup,  FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
+  if (!FLAGS_rnslookup.empty()) { FLAGS_dns_dump=1; app->net->recursive_resolver.get()->StartResolveRequest(new RecursiveResolver::Request(FLAGS_rnslookup, FLAGS_nslookup_mx ? DNS::Type::MX : DNS::Type::A)); }
   if (FLAGS_print_iface_ips) {
     set<IPV4::Addr> ips; string text;
     Sniffer::GetDeviceAddressSet(&ips);
