@@ -86,10 +86,10 @@ struct ReceiverConfig {
     for (int i = 0; i < filters.size(); i++) {
       MailFilter *f = filters[i];
       if      (f->type == MailFilter::DEFAULT)      { default_filter = f; }
-      else if (f->type == MailFilter::MAIL_FROM)    { if (f->regex.Match(mail.mail_from,  0) > 0) return f; }
-      else if (f->type == MailFilter::CONTENT)      { if (f->regex.Match(mail.content,    0) > 0) return f; }
+      else if (f->type == MailFilter::MAIL_FROM)    { if (!!f->regex.MatchOne(mail.mail_from)) return f; }
+      else if (f->type == MailFilter::CONTENT)      { if (!!f->regex.MatchOne(mail.content)) return f; }
       else if (f->type == MailFilter::RCPT_TO) {
-        for (int j=0; j<mail.rcpt_to.size(); j++) { if (f->regex.Match(mail.rcpt_to[j], 0) > 0) return f; }
+        for (int j=0; j<mail.rcpt_to.size(); j++) { if (!!f->regex.MatchOne(mail.rcpt_to[j])) return f; }
       }
     }
 
@@ -107,7 +107,7 @@ struct ReceiverConfig {
 
       for (int i = 0; i < hfi->second.size(); i++) {
         MailFilter *f = hfi->second[i];
-        if (f->regex.Match(hv, 0) > 0) return f;
+        if (!!f->regex.MatchOne(hv)) return f;
       }
     }
 
@@ -152,8 +152,8 @@ struct MySMTPServer : public SMTPServer {
   }
 
   static void MailboxWrite(Connection *c, const SMTP::Message &mail, File *out) {
-    out->Write(StrCat("From MAILER-DAEMON ", localmboxtime(Now()), "\r\n"));
-    out->Write(mail.content);
+    out->WriteString(StrCat("From MAILER-DAEMON ", localmboxtime(Now()), "\r\n"));
+    out->WriteString(mail.content);
     out->Flush();
   }
 } smtp_server;
@@ -184,17 +184,17 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" void MyAppCreate() {
+extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
-  FLAGS_lfapp_network = 1;
-  app = new Application();
+  FLAGS_enable_network = 1;
+  app = new Application(argc, argv);
   screen = new Window();
   screen->frame_cb = Frame;
 }
 
-extern "C" int MyAppMain(int argc, const char* const* argv) {
-  if (app->Create(argc, argv, __FILE__)) return -1;
-  if (app->Init())                       return -1;
+extern "C" int MyAppMain() {
+  if (app->Create(__FILE__)) return -1;
+  if (app->Init())           return -1;
 
   if (!FLAGS_configuration_file.empty()) {
     LocalFile lf(FLAGS_configuration_file, "r");

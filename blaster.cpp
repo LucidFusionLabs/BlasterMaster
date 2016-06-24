@@ -381,7 +381,7 @@ struct BulkMailer {
       string line = StrCat(logtime(Now()), " ", mail.rcpt_to[0], " (", mail.mail_from, " ", IPV4::Text(c->src_addr, c->src_port), ") ");
       StrAppend(&line, FLAGS_configuration, " ", parent->template_name,  " ", delivery_mx_host, "=", IPV4::Text(delivery_mx_ip));
       StrAppend(&line, " response: ", msg.size()?ReplaceNewlines(msg, "<EOL>"):"<Lost Connection>", "\r\n");
-      out->Write(line);
+      out->Write(line.data(), line.size());
       out->Flush();
     }
   };
@@ -622,17 +622,17 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" void MyAppCreate() {
+extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
-  FLAGS_lfapp_network = 1;
-  app = new Application();
+  FLAGS_enable_network = 1;
+  app = new Application(argc, argv);
   screen = new Window();
   screen->frame_cb = Frame;
 }
 
-extern "C" int MyAppMain(int argc, const char* const* argv) {
-  if (app->Create(argc, argv, __FILE__)) return -1;
-  if (app->Init())                       return -1;
+extern "C" int MyAppMain() {
+  if (app->Create(__FILE__)) return -1;
+  if (app->Init())           return -1;
 
   if (!FLAGS_encode_uid.empty()) { INFO("Encode('", FLAGS_encode_uid, "') = '", BulkMailEncoding::EncodeUserID(FLAGS_encode_uid), "'"); return 0; }
   if (!FLAGS_decode_uid.empty()) { INFO("Decode('", FLAGS_decode_uid, "') = '", BulkMailEncoding::DecodeUserID(FLAGS_decode_uid), "'"); return 0; }

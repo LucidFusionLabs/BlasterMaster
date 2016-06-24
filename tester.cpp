@@ -71,17 +71,17 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
 }; // namespace LFL
 using namespace LFL;
 
-extern "C" void MyAppCreate() {
+extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
-  FLAGS_lfapp_network = 1;
-  app = new Application();
+  FLAGS_enable_network = 1;
+  app = new Application(argc, argv);
   screen = new Window();
   screen->frame_cb = Frame;
 }
 
-extern "C" int MyAppMain(int argc, const char* const* argv) {
-  if (app->Create(argc, argv, __FILE__)) return -1;
-  if (app->Init())                       return -1;
+extern "C" int MyAppMain() {
+  if (app->Create(__FILE__)) return -1;
+  if (app->Init())           return -1;
 
   HTTPServer httpd(FLAGS_gui_port, false);
   if (FLAGS_gui_port) {
