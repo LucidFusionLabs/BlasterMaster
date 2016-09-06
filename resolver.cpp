@@ -119,8 +119,8 @@ extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_enable_network = 1;
   app = new Application(argc, argv);
-  screen = new Window();
-  screen->frame_cb = Frame;
+  app->focused = new Window();
+  app->focused->frame_cb = Frame;
 }
 
 extern "C" int MyAppMain() {
