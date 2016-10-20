@@ -84,7 +84,7 @@ struct BulkResolver {
   }
 
   void Frame() {
-    Service *udp_client = app->net->udp_client.get();
+    SocketService *udp_client = app->net->udp_client.get();
     if (!queue.size() || rr->queries_completed < min_rr_completed) return;
     for (int i = 0; i < FLAGS_frame_resolve_max && queue.size() && udp_client->connect_src_pool->Available(); i++) {
       Query *q = queue.back();

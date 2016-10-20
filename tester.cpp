@@ -30,7 +30,9 @@ SMTPServer smtp_test_server(FLAGS_domain);
 SMTPClient smtp_test_client;
 
 struct SMTPTest {
-  int test_size; Service *svc; const long long *test_connected;
+  int test_size;
+  SocketService *svc;
+  const long long *test_connected;
   SMTPTest() : test_size(0), svc(0) { static long long zero=0; test_connected = &zero; }
   void Start() {
     ERROR("SMTPTest::Start() test_size=", test_size);

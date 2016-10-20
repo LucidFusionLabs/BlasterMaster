@@ -324,10 +324,8 @@ struct BulkMailer {
 
     void GetMaxedSourceIPSet(set<IPV4::Addr> *out) {
       map<IPV4::Addr, int> src_addr_count;
-      for (map<Connection*, TargetConnection*>::const_iterator i = conns.begin(); i != conns.end(); ++i)
-        src_addr_count[i->first->src_addr]++;
-
-      for (map<IPV4::Addr, int>::const_iterator i = src_addr_count.begin(); i != src_addr_count.end(); ++i)
+      for (auto i = conns.begin(); i != conns.end(); ++i) src_addr_count[i->first->LocalIPV4().addr]++;
+      for (auto i = src_addr_count.begin(); i != src_addr_count.end(); ++i)
         if (i->second >= FLAGS_max_mx_connections_per_ip)
           out->insert(i->first);
     }
@@ -376,9 +374,9 @@ struct BulkMailer {
       string delivery_mx_host = Host(tc->address_index);
       IPV4::Addr delivery_mx_ip = Address(tc->address_index);
       CHECK_EQ(mail.rcpt_to.size(), 1);
-      CHECK_EQ(delivery_mx_ip, c->addr);
+      CHECK_EQ(delivery_mx_ip, c->LocalIPV4().addr);
 
-      string line = StrCat(logtime(Now()), " ", mail.rcpt_to[0], " (", mail.mail_from, " ", IPV4::Text(c->src_addr, c->src_port), ") ");
+      string line = StrCat(logtime(Now()), " ", mail.rcpt_to[0], " (", mail.mail_from, " ", c->Name(), ") ");
       StrAppend(&line, FLAGS_configuration, " ", parent->template_name,  " ", delivery_mx_host, "=", IPV4::Text(delivery_mx_ip));
       StrAppend(&line, " response: ", msg.size()?ReplaceNewlines(msg, "<EOL>"):"<Lost Connection>", "\r\n");
       out->Write(line.data(), line.size());
