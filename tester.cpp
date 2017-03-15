@@ -66,7 +66,7 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
   }
 
   char buf[256];
-  if (FGets(buf, sizeof(buf))) ERROR("FPS=", app->FPS(), smtp_tester.StatsLine());
+  if (FGets(buf, sizeof(buf))) ERROR("FPS=", W->fps.FPS(), smtp_tester.StatsLine());
   return 0;
 }
 
@@ -77,7 +77,7 @@ extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_enable_network = 1;
   app = new Application(argc, argv);
-  app->focused = new Window();
+  app->focused = Window::Create();
   app->focused->frame_cb = Frame;
 }
 

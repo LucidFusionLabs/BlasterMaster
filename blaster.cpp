@@ -596,8 +596,8 @@ struct StatusGUI : public HTTPServer::Resource {
 
     StrAppend(&response, GChartsHTML::JSFooter(), "</head><body><h>Blaster Version 1.0 Up ", intervaltime(Now() - bulk_mailer.started), "  </h>\n");
     StrAppend(&response, "<p>", bulk_mailer.StatusLine(), "</p>\n");
-    StrAppend(&response, "<p>target conn/sec=", FLAGS_target_fps * FLAGS_frame_connect_max, ", conn/sec=", app->FPS() * bulk_mailer.connects_per_frame.Avg(), "</p>\n");
-    StrAppend(&response, "<p>target_fps=", FLAGS_target_fps, ", FPS=", app->FPS(), "</p>\n");
+    StrAppend(&response, "<p>target conn/sec=", FLAGS_target_fps * FLAGS_frame_connect_max, ", conn/sec=", app->focused->fps.FPS() * bulk_mailer.connects_per_frame.Avg(), "</p>\n");
+    StrAppend(&response, "<p>target_fps=", FLAGS_target_fps, ", FPS=", app->focused->fps.FPS(), "</p>\n");
     StrAppend(&response, "<p>frame_connect_max=", FLAGS_frame_connect_max, ", connects_per_frame=", bulk_mailer.connects_per_frame.Avg(), "</p>\n");
 
     StrAppend(&response, GChartsHTML::DivElement("viz1", 600, 400), "\n");
@@ -613,7 +613,7 @@ int Frame(LFL::Window *W, unsigned clicks, int flag) {
   bulk_mailer.Frame();
 
   char buf[256];
-  if (FGets(buf, sizeof(buf))) ERROR("FPS=", app->FPS(), ", ", bulk_mailer.StatusLine());
+  if (FGets(buf, sizeof(buf))) ERROR("FPS=", W->fps.FPS(), ", ", bulk_mailer.StatusLine());
   return 0;
 }
 
@@ -624,7 +624,7 @@ extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_enable_network = 1;
   app = new Application(argc, argv);
-  app->focused = new Window();
+  app->focused = Window::Create();
   app->focused->frame_cb = Frame;
 }
 

@@ -167,7 +167,7 @@ struct StatusGUI : public HTTPServer::Resource {
     if (table.size()>1) StrAppend(&response, GChartsHTML::JSAreaChart("viz1", 600, 400, "Last Hour", "Mails", "Minutes", table));
 
     StrAppend(&response, GChartsHTML::JSFooter(), "</head><body><h>Receiver Version 1.0</h>\n");
-    StrAppend(&response, "<p>FPS=", app->FPS(), ", ", smtp_server.StatusLine(), "</p>\n");
+    StrAppend(&response, "<p>FPS=", app->focused->fps.FPS(), ", ", smtp_server.StatusLine(), "</p>\n");
     StrAppend(&response, GChartsHTML::DivElement("viz1", 600, 400), "\n");
     StrAppend(&response, "</body></html>\n");
     return HTTPServer::Response("text/html; charset=UTF-8", &response);
@@ -177,7 +177,7 @@ struct StatusGUI : public HTTPServer::Resource {
 int Frame(LFL::Window *W, unsigned clicks, int flag) {
   smtp_server.stat_log->Update();
   char buf[256];
-  if (FGets(buf, sizeof(buf))) ERROR("FPS=", app->FPS(), ", ", smtp_server.StatusLine());
+  if (FGets(buf, sizeof(buf))) ERROR("FPS=", W->fps.FPS(), ", ", smtp_server.StatusLine());
   return 0;
 }
 
@@ -188,7 +188,7 @@ extern "C" void MyAppCreate(int argc, const char* const* argv) {
   FLAGS_max_rlimit_core = FLAGS_max_rlimit_open_files = 1;
   FLAGS_enable_network = 1;
   app = new Application(argc, argv);
-  app->focused = new Window();
+  app->focused = Window::Create();
   app->focused->frame_cb = Frame;
 }
 
