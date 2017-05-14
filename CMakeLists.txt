@@ -2,11 +2,11 @@ if(LFL_MOBILE)
   return()
 endif()
 
-set(BLASTER_LIB ${LFL_APP_LIB} app_null_framework app_null_graphics
+set(BLASTER_LIB ${LFL_APP_LIB} app_null_framework app_null_graphics app_null_toolkit
     app_null_audio app_null_camera app_null_matrix app_null_fft app_stdregex_regex
     app_simple_resampler app_simple_loader ${LFL_APP_CONVERT} ${LFL_APP_CRYPTO} app_null_pk app_null_dh
     app_null_png app_null_jpeg app_null_gif app_null_ogg app_null_css app_null_ttf
-    app_null_ssl app_null_js app_null_tu app_net_smtp ${LFL_APP_OS})
+    app_null_ssl app_null_js app_null_tu app_null_crashreporting app_net_smtp ${LFL_APP_OS})
 
 lfl_project(blaster)
 lfl_add_target(blaster EXECUTABLE SOURCES blaster.cpp LINK_LIBRARIES ${BLASTER_LIB})
