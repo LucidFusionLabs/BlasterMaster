@@ -4,7 +4,7 @@
 
 #include "core/app/network.h"
 #include "core/app/net/smtp.h"
-#include "core/app/gui.h"
+#include "core/app/gl/view.h"
 #include "core/web/google_chart.h"
 
 namespace LFL { 

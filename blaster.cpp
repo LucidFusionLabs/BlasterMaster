@@ -7,7 +7,7 @@
 #include "core/web/dom.h"
 #include "core/web/css.h"
 #include "core/app/flow.h"
-#include "core/app/gui.h"
+#include "core/app/gl/view.h"
 #include "core/app/net/smtp.h"
 #include "core/web/html.h"
 #include "core/web/google_chart.h"
